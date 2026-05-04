@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alforria dos Crias | Gestão Inteligente</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f8fafc; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .input-pro { background: #1e293b; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.75rem; width: 100%; outline: none; }
+        .input-pro:focus { border-color: #6366f1; }
+        .text-high-contrast { color: #ffffff !important; font-weight: 600; }
+        
+        /* Modal Style */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
+        .modal-active { display: flex; }
+        
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen pb-10">
+
+    <div id="appModal" class="modal-overlay p-4">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[2rem] w-full max-w-sm shadow-2xl">
+            <h3 id="modalTitle" class="text-2xl font-bold mb-2">Ação</h3>
+            <p id="modalDesc" class="text-slate-400 text-sm mb-6">Insira os detalhes abaixo.</p>
+            <div id="modalInputs" class="space-y-4 mb-6">
+                <input type="text" id="inputName" class="input-pro" placeholder="Nome/Descrição">
+                <input type="number" id="inputValue" class="input-pro" placeholder="Valor R$">
+                <input type="number" id="inputTaxa" class="input-pro hidden" placeholder="Rendimento Mensal %">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-white/5 rounded-xl transition">Sair</button>
+                <button id="modalConfirm" class="flex-1 py-3 bg-indigo-600 rounded-xl font-bold shadow-lg">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <header class="p-6 glass sticky top-0 z-50 flex justify-between items-center">
+        <h1 class="text-2xl font-black tracking-tighter text-indigo-400">ALFORRIA DOS CRIAS</h1>
+        <button onclick="gerarPDF()" class="bg-white/5 p-2 rounded-lg hover:bg-white/10 transition"><i data-lucide="file-text"></i></button>
+    </header>
+
+    <main class="container mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <div class="lg:col-span-4 space-y-6">
+            <div class="glass p-8 rounded-[2.5rem] bg-gradient-to-br from-indigo-950/40 to-transparent">
+                <p class="text-slate-400 text-xs font-bold uppercase mb-1">Saldo Líquido</p>
+                <h2 class="text-5xl font-black tracking-tighter mb-6" id="txtSaldo">R$ 0,00</h2>
+                
+                <div class="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 mb-6">
+                    <p class="text-[10px] text-emerald-400 font-bold uppercase">Economia do Mês Passado</p>
+                    <p class="text-xl font-bold text-white" id="txtEconomia">R$ 0,00</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="openModal('salario')" class="bg-indigo-600 p-4 rounded-2xl font-bold text-xs">NOVO SALÁRIO</button>
+                    <button onclick="openModal('extra')" class="bg-slate-800 p-4 rounded-2xl font-bold text-xs">EXTRA</button>
+                </div>
+            </div>
+
+            <div class="glass p-8 rounded-[2.5rem] border-t-4 border-orange-500">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-orange-400 flex items-center gap-2"><i data-lucide="zap"></i> Gasto Diário</h3>
+                    <button onclick="openModal('limite')" class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400">LIMITE</button>
+                </div>
+                <div class="mb-6 space-y-2">
+                    <div class="flex justify-between text-xs font-bold px-1">
+                        <span id="txtGastoInfo">R$ 0,00</span>
+                        <span id="txtLimiteInfo" class="text-orange-500">R$ 80,00</span>
+                    </div>
+                    <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div id="barLimite" class="h-full bg-orange-500 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <input type="text" id="diarioNome" placeholder="Ex: Café" class="input-pro text-sm">
+                    <input type="number" id="diarioValor" placeholder="Valor" class="input-pro text-sm">
+                    <button onclick="lancarDiario()" class="w-full bg-orange-600 py-3 rounded-xl font-bold text-sm">DEBITAR DO DIA</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-5 space-y-6">
+            <div class="glass p-8 rounded-[2.5rem]">
+                <h3 class="font-bold mb-6 flex items-center gap-2 text-white"><i data-lucide="tag" class="text-indigo-400"></i> Lançar Gasto Geral</h3>
+                <div class="space-y-4">
+                    <input type="text" id="geralNome" placeholder="Descrição do gasto" class="input-pro">
+                    <div class="grid grid-cols-2 gap-3">
+                        <select id="geralCat" class="input-pro text-sm">
+                            <option value="Mercado">Mercado 🛒</option>
+                            <option value="Lazer">Lazer 🍺</option>
+                            <option value="Veículo">Veículo 🚗</option>
+                            <option value="Saúde">Saúde 💊</option>
+                        </select>
+                        <input type="number" id="geralValor" placeholder="Valor R$" class="input-pro">
+                    </div>
+                    <button onclick="lancarGeral()" class="w-full bg-indigo-500/20 text-indigo-400 py-3 rounded-xl font-bold border border-indigo-500/40 transition hover:bg-indigo-500/30">REGISTRAR GASTO</button>
+                </div>
+            </div>
+
+            <div class="glass p-8 rounded-[2.5rem] border-l-4 border-indigo-600">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="calendar" class="text-indigo-400"></i> Contas Fixas</h3>
+                    <button onclick="openModal('fixa')" class="bg-indigo-600 p-2 rounded-lg"><i data-lucide="plus" size="18"></i></button>
+                </div>
+                <div id="listaFixas" class="space-y-3 max-h-[250px] overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 space-y-6">
+            <div class="glass p-6 rounded-[2rem] border border-emerald-500/20 bg-emerald-500/5">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-emerald-400 font-bold text-xs uppercase">Investimentos</h4>
+                    <button onclick="openModal('invest')" class="text-emerald-400"><i data-lucide="plus-circle" size="18"></i></button>
+                </div>
+                <div id="listaInvest" class="space-y-3"></div>
+            </div>
+
+            <div class="glass p-6 rounded-[2rem] border border-cyan-500/20 bg-cyan-500/5">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-cyan-400 font-bold text-xs uppercase">Minhas Metas</h4>
+                    <button onclick="openModal('meta')" class="text-cyan-400"><i data-lucide="plus-circle" size="18"></i></button>
+                </div>
+                <div id="listaMetas" class="space-y-4"></div>
+            </div>
+
+            <div class="glass p-6 rounded-[2rem] bg-slate-900 shadow-inner">
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Projeção p/ Próximo Mês</p>
+                <h3 class="text-2xl font-black text-white" id="txtProjecao">R$ 0,00</h3>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('alforria_v6')) || {
+            saldo: 0, economia: 0, fixas: [], invest: [], metas: [],
+            limite: 80, gastoDia: 0, ultimaData: new Date().toLocaleDateString(),
+            categorias: { Mercado: 0, Lazer: 0, Veículo: 0, Saúde: 0 }
+        };
+
+        function save() { 
+            localStorage.setItem('alforria_v6', JSON.stringify(db)); 
+            render(); 
+        }
+
+        // MODAL LOGIC
+        const modal = document.getElementById('appModal');
+        let currentAction = '';
+
+        function openModal(action) {
+            currentAction = action;
+            document.getElementById('inputTaxa').classList.add('hidden');
+            document.getElementById('inputName').classList.remove('hidden');
+            const title = document.getElementById('modalTitle');
+            const desc = document.getElementById('modalDesc');
+
+            if(action === 'salario') { title.innerText = "Novo Salário"; desc.innerText = "O saldo atual vai para economia."; }
+            if(action === 'extra') { title.innerText = "Entrada Extra"; desc.innerText = "Soma direta ao saldo."; }
+            if(action === 'limite') { title.innerText = "Limite Diário"; desc.innerText = "Altere sua meta de gasto diário."; document.getElementById('inputName').classList.add('hidden'); }
+            if(action === 'fixa') { title.innerText = "Nova Conta Fixa"; desc.innerText = "Será descontada todo mês."; }
+            if(action === 'invest') { title.innerText = "Investimento"; desc.innerText = "Ativo e rendimento mensal."; document.getElementById('inputTaxa').classList.remove('hidden'); }
+            if(action === 'meta') { title.innerText = "Nova Meta"; desc.innerText = "Nome do sonho e valor total."; }
+
+            modal.classList.add('modal-active');
+        }
+
+        function closeModal() { modal.classList.remove('modal-active'); }
+
+        document.getElementById('modalConfirm').onclick = () => {
+            const nome = document.getElementById('inputName').value;
+            const val = parseFloat(document.getElementById('inputValue').value);
+            const taxa = parseFloat(document.getElementById('inputTaxa').value);
+
+            if(currentAction === 'salario') { db.economia += db.saldo; db.saldo = val; db.gastoDia = 0; db.categorias = { Mercado: 0, Lazer: 0, Veículo: 0, Saúde: 0 }; }
+            if(currentAction === 'extra') { db.saldo += val; }
+            if(currentAction === 'limite') { db.limite = val; }
+            if(currentAction === 'fixa') { db.fixas.push({id: Date.now(), nome, valor: val}); }
+            if(currentAction === 'invest') { if(val <= db.saldo) { db.saldo -= val; db.invest.push({nome, valor: val, taxa}); } else { alert("Saldo insuficiente!"); } }
+            if(currentAction === 'meta') { db.metas.push({id: Date.now(), nome, total: val, atual: 0}); }
+
+            save(); closeModal();
+        };
+
+        // GASTOS
+        function lancarDiario() {
+            const val = parseFloat(document.getElementById('diarioValor').value);
+            if(db.gastoDia + val > db.limite) return alert("Limite excedido!");
+            if(val > db.saldo) return alert("Sem saldo!");
+            db.saldo -= val; db.gastoDia += val;
+            document.getElementById('diarioNome').value = ''; document.getElementById('diarioValor').value = '';
+            save();
+        }
+
+        function lancarGeral() {
+            const cat = document.getElementById('geralCat').value;
+            const val = parseFloat(document.getElementById('geralValor').value);
+            if(val > db.saldo) return alert("Sem saldo!");
+            db.saldo -= val; db.categorias[cat] += val;
+            document.getElementById('geralNome').value = ''; document.getElementById('geralValor').value = '';
+            save();
+        }
+
+        // APAGAR FIXA
+        function delFixa(id) { db.fixas = db.fixas.filter(f => f.id !== id); save(); }
+
+        // APORTAR META
+        function aportarMeta(id) {
+            const v = parseFloat(prompt("Valor do aporte:"));
+            let meta = db.metas.find(m => m.id === id);
+            if(v <= db.saldo) {
+                db.saldo -= v; meta.atual += v;
+                if(meta.atual >= meta.total) { alert("META CONCLUÍDA!"); db.metas = db.metas.filter(m => m.id !== id); }
+                save();
+            }
+        }
+
+        // RENDER
+        function render() {
+            lucide.createIcons();
+            document.getElementById('txtSaldo').innerText = `R$ ${db.saldo.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            document.getElementById('txtEconomia').innerText = `R$ ${db.economia.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            
+            // Diário
+            const perc = (db.gastoDia / db.limite) * 100;
+            document.getElementById('barLimite').style.width = Math.min(perc, 100) + '%';
+            document.getElementById('txtGastoInfo').innerText = `Gasto: R$ ${db.gastoDia.toFixed(2)}`;
+            document.getElementById('txtLimiteInfo').innerText = `Limite: R$ ${db.limite.toFixed(2)}`;
+
+            // Fixas
+            let sumFixa = 0;
+            document.getElementById('listaFixas').innerHTML = db.fixas.map(f => {
+                sumFixa += f.valor;
+                return `<div class="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div><p class="text-sm font-bold text-white">${f.nome}</p><p class="text-[10px] text-slate-500 uppercase">Mensal: R$ ${f.valor.toFixed(2)}</p></div>
+                    <button onclick="delFixa(${f.id})" class="text-rose-500 p-2"><i data-lucide="trash-2" size="16"></i></button>
+                </div>`;
+            }).join('');
+            document.getElementById('txtProjecao').innerText = `R$ ${(db.saldo - sumFixa).toLocaleString('pt-BR')}`;
+
+            // Investimentos & Metas (Alto Contraste)
+            document.getElementById('listaInvest').innerHTML = db.invest.map(i => `
+                <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-emerald-500/10">
+                    <span class="text-white text-sm font-bold">${i.nome}</span>
+                    <span class="text-white text-sm font-black">R$ ${i.valor.toFixed(2)}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('listaMetas').innerHTML = db.metas.map(m => `
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[10px] font-bold text-white"><span>${m.nome}</span><span>${((m.atual/m.total)*100).toFixed(0)}%</span></div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-cyan-500 h-full" style="width: ${(m.atual/m.total)*100}%"></div></div>
+                    <button onclick="aportarMeta(${m.id})" class="text-[9px] text-cyan-400 font-black mt-1">APORTAR DINHEIRO</button>
+                </div>
+            `).join('');
+        }
+
+        // Auto Reset Diário
+        (function() {
+            const h = new Date().toLocaleDateString();
+            if(db.ultimaData !== h) { db.gastoDia = 0; db.ultimaData = h; save(); }
+        })();
+
+        window.onload = render;
+    </script>
+</body>
+</html>
