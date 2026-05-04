@@ -3,343 +3,272 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alforria dos crias | Full Edition</title>
+    <title>Alforria dos Crias | Gestão Inteligente</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f8fafc; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); }
+        .input-pro { background: #1e293b; border: 1px solid #334155; color: white; padding: 0.75rem; border-radius: 0.75rem; width: 100%; outline: none; }
+        .input-pro:focus { border-color: #6366f1; }
+        .text-high-contrast { color: #ffffff !important; font-weight: 600; }
         
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background: radial-gradient(circle at top right, #1e1b4b, #020617);
-            color: #f8fafc; 
-            min-height: 100vh;
-        }
-
-        .glass-card { 
-            background: rgba(15, 23, 42, 0.7); 
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-            border-radius: 28px; 
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
-        }
-
-        .nav-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 2px;
-            background: rgba(51, 65, 85, 0.5);
-            border-radius: 20px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-item {
-            background: #0f172a;
-            padding: 12px 5px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-
-        .nav-item.active { background: #38bdf8; color: #020617; }
-
-        .page-section { display: none; animation: fadeIn 0.4s ease-out; }
-        .page-section.active { display: block; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-        #modal-overlay { display: none; background: rgba(0,0,0,0.9); backdrop-filter: blur(12px); z-index: 100; position: fixed; inset: 0; }
+        /* Modal Style */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 100; align-items: center; justify-content: center; }
+        .modal-active { display: flex; }
         
-        input, select { 
-            background: rgba(30, 41, 59, 0.8) !important; 
-            border: 1px solid rgba(255,255,255,0.1) !important; 
-            color: white !important;
-            border-radius: 12px;
-        }
-
-        .concluida-anim { animation: pulse-green 2s infinite; border-color: #10b981 !important; }
-        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
-<body class="pb-32 md:pb-12 p-4">
+<body class="min-h-screen pb-10">
 
-    <div id="modal-overlay">
-        <div class="flex items-center justify-center min-h-full p-4">
-            <div class="glass-card p-8 w-full max-w-md text-center">
-                <div id="modal-icon" class="text-4xl mb-4"></div>
-                <h3 id="modal-title" class="text-xl font-bold mb-2 text-sky-400"></h3>
-                <div id="modal-body" class="text-white text-sm mb-6"></div>
-                <div id="modal-actions" class="flex flex-col gap-3"></div>
+    <div id="appModal" class="modal-overlay p-4">
+        <div class="bg-slate-900 border border-slate-700 p-8 rounded-[2rem] w-full max-w-sm shadow-2xl">
+            <h3 id="modalTitle" class="text-2xl font-bold mb-2">Ação</h3>
+            <p id="modalDesc" class="text-slate-400 text-sm mb-6">Insira os detalhes abaixo.</p>
+            <div id="modalInputs" class="space-y-4 mb-6">
+                <input type="text" id="inputName" class="input-pro" placeholder="Nome/Descrição">
+                <input type="number" id="inputValue" class="input-pro" placeholder="Valor R$">
+                <input type="number" id="inputTaxa" class="input-pro hidden" placeholder="Rendimento Mensal %">
+            </div>
+            <div class="flex gap-3">
+                <button onclick="closeModal()" class="flex-1 py-3 text-slate-400 font-bold hover:bg-white/5 rounded-xl transition">Sair</button>
+                <button id="modalConfirm" class="flex-1 py-3 bg-indigo-600 rounded-xl font-bold shadow-lg">Confirmar</button>
             </div>
         </div>
     </div>
 
-    <header class="max-w-5xl mx-auto mb-8">
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-black text-white italic tracking-tighter">ALFORRIA <span class="text-sky-400">CRIAS</span></h1>
-            <button onclick="preparaReset()" class="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1 rounded-lg text-[10px] font-bold uppercase">
-                <i class="fas fa-sync-alt mr-1"></i> Novo Mês
-            </button>
-        </div>
-        
-        <div class="glass-card p-6 text-center relative overflow-hidden">
-            <div id="badge-status" class="absolute top-4 right-4 px-3 py-0.5 rounded-full text-[8px] font-black uppercase"></div>
-            <div class="absolute top-0 left-0 w-full h-1" id="balance-line"></div>
-            <p class="text-xs text-gray-400 uppercase font-bold tracking-widest mb-1">Saldo Atual</p>
-            <h2 id="saldo-geral" class="text-5xl font-black tracking-tighter">R$ 0,00</h2>
-            <div class="grid grid-cols-2 gap-4 mt-6 border-t border-white/10 pt-4">
-                <div>
-                    <p class="text-[10px] text-emerald-400 font-bold uppercase">Ganhos</p>
-                    <p id="total-entradas" class="text-lg font-bold">R$ 0,00</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-red-400 font-bold uppercase">Gastos</p>
-                    <p id="total-saidas" class="text-lg font-bold">R$ 0,00</p>
-                </div>
-            </div>
-        </div>
+    <header class="p-6 glass sticky top-0 z-50 flex justify-between items-center">
+        <h1 class="text-2xl font-black tracking-tighter text-indigo-400">ALFORRIA DOS CRIAS</h1>
+        <button onclick="gerarPDF()" class="bg-white/5 p-2 rounded-lg hover:bg-white/10 transition"><i data-lucide="file-text"></i></button>
     </header>
 
-    <nav class="fixed bottom-6 left-4 right-4 z-50 md:relative md:bottom-0 md:mb-12 max-w-2xl mx-auto">
-        <div class="nav-grid">
-            <div onclick="switchTab('dash')" class="nav-item active" id="btn-dash">
-                <span class="text-xl">🏠</span>
-                <span class="text-[10px] font-bold mt-1 uppercase">Início</span>
+    <main class="container mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <div class="lg:col-span-4 space-y-6">
+            <div class="glass p-8 rounded-[2.5rem] bg-gradient-to-br from-indigo-950/40 to-transparent">
+                <p class="text-slate-400 text-xs font-bold uppercase mb-1">Saldo Líquido</p>
+                <h2 class="text-5xl font-black tracking-tighter mb-6" id="txtSaldo">R$ 0,00</h2>
+                
+                <div class="p-4 bg-emerald-500/10 rounded-2xl border border-emerald-500/20 mb-6">
+                    <p class="text-[10px] text-emerald-400 font-bold uppercase">Economia do Mês Passado</p>
+                    <p class="text-xl font-bold text-white" id="txtEconomia">R$ 0,00</p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="openModal('salario')" class="bg-indigo-600 p-4 rounded-2xl font-bold text-xs">NOVO SALÁRIO</button>
+                    <button onclick="openModal('extra')" class="bg-slate-800 p-4 rounded-2xl font-bold text-xs">EXTRA</button>
+                </div>
             </div>
-            <div onclick="switchTab('trans')" class="nav-item" id="btn-trans">
-                <span class="text-xl">💸</span>
-                <span class="text-[10px] font-bold mt-1 uppercase">Fluxo</span>
-            </div>
-            <div onclick="switchTab('metas')" class="nav-item" id="btn-metas">
-                <span class="text-xl">🎯</span>
-                <span class="text-[10px] font-bold mt-1 uppercase">Metas</span>
+
+            <div class="glass p-8 rounded-[2.5rem] border-t-4 border-orange-500">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-orange-400 flex items-center gap-2"><i data-lucide="zap"></i> Gasto Diário</h3>
+                    <button onclick="openModal('limite')" class="text-[10px] bg-slate-800 px-2 py-1 rounded text-slate-400">LIMITE</button>
+                </div>
+                <div class="mb-6 space-y-2">
+                    <div class="flex justify-between text-xs font-bold px-1">
+                        <span id="txtGastoInfo">R$ 0,00</span>
+                        <span id="txtLimiteInfo" class="text-orange-500">R$ 80,00</span>
+                    </div>
+                    <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+                        <div id="barLimite" class="h-full bg-orange-500 transition-all duration-500" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <input type="text" id="diarioNome" placeholder="Ex: Café" class="input-pro text-sm">
+                    <input type="number" id="diarioValor" placeholder="Valor" class="input-pro text-sm">
+                    <button onclick="lancarDiario()" class="w-full bg-orange-600 py-3 rounded-xl font-bold text-sm">DEBITAR DO DIA</button>
+                </div>
             </div>
         </div>
-    </nav>
 
-    <main class="max-w-5xl mx-auto">
-        <section id="dash" class="page-section active space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="glass-card p-6 h-72"><canvas id="chartPizza"></canvas></div>
-                <div class="glass-card p-6 h-72"><canvas id="chartLinha"></canvas></div>
-            </div>
-            <div class="glass-card p-6">
-                <h3 class="font-bold text-gray-400 text-xs uppercase mb-4 tracking-widest">Histórico Detalhado</h3>
-                <div id="lista-historico" class="space-y-3"></div>
-            </div>
-        </section>
-
-        <section id="trans" class="page-section space-y-6">
-            <div class="glass-card p-6 border-l-8 border-emerald-500">
-                <h2 class="font-black text-emerald-400 mb-4 uppercase text-sm">💰 Entrada</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input type="text" id="in-desc" placeholder="Ex: Salário" class="p-4">
-                    <input type="number" id="in-valor" placeholder="R$">
-                    <select id="in-cat" class="p-4">
-                        <option value="Salário">💵 Salário</option>
-                        <option value="Extra">💎 Extra</option>
-                    </select>
-                </div>
-                <button onclick="adicionarGanho()" class="w-full mt-4 bg-emerald-500 text-black font-black p-4 rounded-2xl uppercase shadow-lg">Salvar Entrada</button>
-            </div>
-            <div class="glass-card p-6 border-l-8 border-red-500">
-                <h2 class="font-black text-red-400 mb-4 uppercase text-sm">📉 Saída</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input type="text" id="out-desc" placeholder="Ex: Mercado" class="p-4">
-                    <input type="number" id="out-valor" placeholder="R$">
-                    <select id="out-cat" class="p-4">
-                        <option value="Mercado">🛒 Mercado</option>
-                        <option value="Fixo">🏠 Fixo</option>
-                        <option value="Lazer">🎡 Lazer</option>
-                        <option value="Cartão">💳 Cartão</option>
-                        <option value="Roupa">👕 Roupa</option>
-                        <option value="Outros">⚙️ Outros</option>
-                    </select>
-                </div>
-                <button onclick="adicionarGasto()" class="w-full mt-4 bg-red-500 text-white font-black p-4 rounded-2xl uppercase shadow-lg">Salvar Saída</button>
-            </div>
-        </section>
-
-        <section id="metas" class="page-section space-y-6">
-            <div class="glass-card p-6">
-                <h2 class="font-black text-sky-400 mb-4 uppercase text-sm">🚀 Criar Meta</h2>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input type="text" id="meta-nome" placeholder="Nome da Meta" class="p-4">
-                    <input type="number" id="meta-valor" placeholder="Total R$" class="p-4">
-                    <button onclick="addMeta()" class="bg-sky-500 text-black font-black p-4 rounded-2xl uppercase">Criar</button>
+        <div class="lg:col-span-5 space-y-6">
+            <div class="glass p-8 rounded-[2.5rem]">
+                <h3 class="font-bold mb-6 flex items-center gap-2 text-white"><i data-lucide="tag" class="text-indigo-400"></i> Lançar Gasto Geral</h3>
+                <div class="space-y-4">
+                    <input type="text" id="geralNome" placeholder="Descrição do gasto" class="input-pro">
+                    <div class="grid grid-cols-2 gap-3">
+                        <select id="geralCat" class="input-pro text-sm">
+                            <option value="Mercado">Mercado 🛒</option>
+                            <option value="Lazer">Lazer 🍺</option>
+                            <option value="Veículo">Veículo 🚗</option>
+                            <option value="Saúde">Saúde 💊</option>
+                        </select>
+                        <input type="number" id="geralValor" placeholder="Valor R$" class="input-pro">
+                    </div>
+                    <button onclick="lancarGeral()" class="w-full bg-indigo-500/20 text-indigo-400 py-3 rounded-xl font-bold border border-indigo-500/40 transition hover:bg-indigo-500/30">REGISTRAR GASTO</button>
                 </div>
             </div>
-            <div id="lista-metas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-        </section>
+
+            <div class="glass p-8 rounded-[2.5rem] border-l-4 border-indigo-600">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-white flex items-center gap-2"><i data-lucide="calendar" class="text-indigo-400"></i> Contas Fixas</h3>
+                    <button onclick="openModal('fixa')" class="bg-indigo-600 p-2 rounded-lg"><i data-lucide="plus" size="18"></i></button>
+                </div>
+                <div id="listaFixas" class="space-y-3 max-h-[250px] overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-3 space-y-6">
+            <div class="glass p-6 rounded-[2rem] border border-emerald-500/20 bg-emerald-500/5">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-emerald-400 font-bold text-xs uppercase">Investimentos</h4>
+                    <button onclick="openModal('invest')" class="text-emerald-400"><i data-lucide="plus-circle" size="18"></i></button>
+                </div>
+                <div id="listaInvest" class="space-y-3"></div>
+            </div>
+
+            <div class="glass p-6 rounded-[2rem] border border-cyan-500/20 bg-cyan-500/5">
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="text-cyan-400 font-bold text-xs uppercase">Minhas Metas</h4>
+                    <button onclick="openModal('meta')" class="text-cyan-400"><i data-lucide="plus-circle" size="18"></i></button>
+                </div>
+                <div id="listaMetas" class="space-y-4"></div>
+            </div>
+
+            <div class="glass p-6 rounded-[2rem] bg-slate-900 shadow-inner">
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Projeção p/ Próximo Mês</p>
+                <h3 class="text-2xl font-black text-white" id="txtProjecao">R$ 0,00</h3>
+            </div>
+        </div>
     </main>
 
     <script>
-        let db = JSON.parse(localStorage.getItem('alforria_vFinal_Full')) || { trans: [], metas: [] };
-        let charts = {};
+        let db = JSON.parse(localStorage.getItem('alforria_v6')) || {
+            saldo: 0, economia: 0, fixas: [], invest: [], metas: [],
+            limite: 80, gastoDia: 0, ultimaData: new Date().toLocaleDateString(),
+            categorias: { Mercado: 0, Lazer: 0, Veículo: 0, Saúde: 0 }
+        };
 
-        function save() {
-            localStorage.setItem('alforria_vFinal_Full', JSON.stringify(db));
-            render();
+        function save() { 
+            localStorage.setItem('alforria_v6', JSON.stringify(db)); 
+            render(); 
         }
 
-        function switchTab(id) {
-            document.querySelectorAll('.page-section, .nav-item').forEach(el => el.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            document.getElementById('btn-' + id).classList.add('active');
-            if(id === 'dash') renderCharts();
+        // MODAL LOGIC
+        const modal = document.getElementById('appModal');
+        let currentAction = '';
+
+        function openModal(action) {
+            currentAction = action;
+            document.getElementById('inputTaxa').classList.add('hidden');
+            document.getElementById('inputName').classList.remove('hidden');
+            const title = document.getElementById('modalTitle');
+            const desc = document.getElementById('modalDesc');
+
+            if(action === 'salario') { title.innerText = "Novo Salário"; desc.innerText = "O saldo atual vai para economia."; }
+            if(action === 'extra') { title.innerText = "Entrada Extra"; desc.innerText = "Soma direta ao saldo."; }
+            if(action === 'limite') { title.innerText = "Limite Diário"; desc.innerText = "Altere sua meta de gasto diário."; document.getElementById('inputName').classList.add('hidden'); }
+            if(action === 'fixa') { title.innerText = "Nova Conta Fixa"; desc.innerText = "Será descontada todo mês."; }
+            if(action === 'invest') { title.innerText = "Investimento"; desc.innerText = "Ativo e rendimento mensal."; document.getElementById('inputTaxa').classList.remove('hidden'); }
+            if(action === 'meta') { title.innerText = "Nova Meta"; desc.innerText = "Nome do sonho e valor total."; }
+
+            modal.classList.add('modal-active');
         }
 
-        function adicionarGanho() {
-            const d = document.getElementById('in-desc'), v = document.getElementById('in-valor'), c = document.getElementById('in-cat');
-            if (d.value && v.value) {
-                db.trans.push({ desc: d.value, valor: parseFloat(v.value), cat: c.value, data: new Date().toLocaleDateString('pt-BR') });
-                d.value = ''; v.value = ''; save();
+        function closeModal() { modal.classList.remove('modal-active'); }
+
+        document.getElementById('modalConfirm').onclick = () => {
+            const nome = document.getElementById('inputName').value;
+            const val = parseFloat(document.getElementById('inputValue').value);
+            const taxa = parseFloat(document.getElementById('inputTaxa').value);
+
+            if(currentAction === 'salario') { db.economia += db.saldo; db.saldo = val; db.gastoDia = 0; db.categorias = { Mercado: 0, Lazer: 0, Veículo: 0, Saúde: 0 }; }
+            if(currentAction === 'extra') { db.saldo += val; }
+            if(currentAction === 'limite') { db.limite = val; }
+            if(currentAction === 'fixa') { db.fixas.push({id: Date.now(), nome, valor: val}); }
+            if(currentAction === 'invest') { if(val <= db.saldo) { db.saldo -= val; db.invest.push({nome, valor: val, taxa}); } else { alert("Saldo insuficiente!"); } }
+            if(currentAction === 'meta') { db.metas.push({id: Date.now(), nome, total: val, atual: 0}); }
+
+            save(); closeModal();
+        };
+
+        // GASTOS
+        function lancarDiario() {
+            const val = parseFloat(document.getElementById('diarioValor').value);
+            if(db.gastoDia + val > db.limite) return alert("Limite excedido!");
+            if(val > db.saldo) return alert("Sem saldo!");
+            db.saldo -= val; db.gastoDia += val;
+            document.getElementById('diarioNome').value = ''; document.getElementById('diarioValor').value = '';
+            save();
+        }
+
+        function lancarGeral() {
+            const cat = document.getElementById('geralCat').value;
+            const val = parseFloat(document.getElementById('geralValor').value);
+            if(val > db.saldo) return alert("Sem saldo!");
+            db.saldo -= val; db.categorias[cat] += val;
+            document.getElementById('geralNome').value = ''; document.getElementById('geralValor').value = '';
+            save();
+        }
+
+        // APAGAR FIXA
+        function delFixa(id) { db.fixas = db.fixas.filter(f => f.id !== id); save(); }
+
+        // APORTAR META
+        function aportarMeta(id) {
+            const v = parseFloat(prompt("Valor do aporte:"));
+            let meta = db.metas.find(m => m.id === id);
+            if(v <= db.saldo) {
+                db.saldo -= v; meta.atual += v;
+                if(meta.atual >= meta.total) { alert("META CONCLUÍDA!"); db.metas = db.metas.filter(m => m.id !== id); }
+                save();
             }
         }
 
-        function adicionarGasto() {
-            const d = document.getElementById('out-desc'), v = document.getElementById('out-valor'), c = document.getElementById('out-cat');
-            if (d.value && v.value) {
-                db.trans.push({ desc: d.value, valor: -parseFloat(v.value), cat: c.value, data: new Date().toLocaleDateString('pt-BR') });
-                d.value = ''; v.value = ''; save();
-            }
-        }
-
-        function addMeta() {
-            const n = document.getElementById('meta-nome'), v = document.getElementById('meta-valor');
-            if(n.value && v.value) {
-                db.metas.push({ nome: n.value, total: parseFloat(v.value), atual: 0 });
-                n.value = ''; v.value = ''; save();
-            }
-        }
-
-        function aportarMeta(idx) {
-            document.getElementById('modal-title').innerText = `Aportar: ${db.metas[idx].nome}`;
-            document.getElementById('modal-icon').innerText = "💰";
-            document.getElementById('modal-body').innerHTML = `<input type="number" id="val-meta" placeholder="R$" class="w-full p-4 rounded-xl text-black border-none ring-2 ring-sky-500">`;
-            document.getElementById('modal-actions').innerHTML = `
-                <button onclick="confirmarAporte(${idx})" class="w-full p-4 bg-sky-500 text-black font-black rounded-2xl uppercase">Confirmar</button>
-                <button onclick="closeModal()" class="w-full p-4 bg-slate-800 text-white font-bold rounded-2xl uppercase">Voltar</button>
-            `;
-            document.getElementById('modal-overlay').style.display = 'block';
-        }
-
-        function confirmarAporte(idx) {
-            const v = parseFloat(document.getElementById('val-meta').value);
-            if(v) {
-                db.metas[idx].atual += v;
-                db.trans.push({ desc: `Aporte: ${db.metas[idx].nome}`, valor: -v, cat: 'Metas', data: new Date().toLocaleDateString('pt-BR') });
-                save(); closeModal();
-            }
-        }
-
-        function finalizarMeta(idx) {
-            document.getElementById('modal-title').innerText = "Meta Atingida! 🏆";
-            document.getElementById('modal-icon').innerText = "🥳";
-            document.getElementById('modal-body').innerText = `Você atingiu o valor total de ${db.metas[idx].nome}! Deseja marcar como concluída e remover da lista?`;
-            document.getElementById('modal-actions').innerHTML = `
-                <button onclick="db.metas.splice(${idx}, 1); save(); closeModal();" class="w-full p-4 bg-emerald-500 text-black font-black rounded-2xl uppercase">Concluir e Excluir</button>
-                <button onclick="closeModal()" class="w-full p-4 bg-slate-800 text-white font-bold rounded-2xl uppercase">Manter</button>
-            `;
-            document.getElementById('modal-overlay').style.display = 'block';
-        }
-
-        function preparaReset() {
-            document.getElementById('modal-title').innerText = "Novo Mês";
-            document.getElementById('modal-icon').innerText = "🗓️";
-            document.getElementById('modal-body').innerText = "Escolha como deseja resetar o seu fluxo mensal. Suas Metas atuais não serão afetadas.";
-            document.getElementById('modal-actions').innerHTML = `
-                <button onclick="gerarPDFComReset()" class="w-full p-4 bg-emerald-500 text-black font-black rounded-2xl text-xs uppercase">1. Baixar PDF e Resetar</button>
-                <button onclick="resetarDireto()" class="w-full p-4 bg-red-500 text-white font-black rounded-2xl text-xs uppercase">2. Não gerar PDF e Resetar</button>
-                <button onclick="closeModal()" class="w-full p-4 bg-slate-800 text-white font-bold rounded-2xl text-xs uppercase">Voltar</button>
-            `;
-            document.getElementById('modal-overlay').style.display = 'block';
-        }
-
-        function resetarDireto() {
-            if(confirm("Tem certeza que deseja zerar o fluxo do mês sem gerar o relatório?")) {
-                db.trans = []; save(); closeModal();
-            }
-        }
-
-        function gerarPDFComReset() {
-            gerarPDF();
-            setTimeout(() => {
-                if(confirm("PDF gerado! Deseja zerar o fluxo mensal agora?")) {
-                    db.trans = []; save(); closeModal();
-                }
-            }, 1000);
-        }
-
-        function gerarPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const date = new Date().toLocaleDateString('pt-BR');
-            doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 40, 'F');
-            doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.text("ALFORRIA CRIAS - RELATÓRIO", 15, 25);
-            doc.setTextColor(0,0,0); doc.setFontSize(14); doc.text("RESUMO DO MÊS", 15, 55);
-            const inT = db.trans.filter(t => t.valor > 0).reduce((a,b) => a+b.valor, 0);
-            const outT = db.trans.filter(t => t.valor < 0).reduce((a,b) => a+Math.abs(b.valor), 0);
-            doc.setFontSize(11); doc.text(`Total Entradas: R$ ${inT.toFixed(2)}`, 15, 65); doc.text(`Total Saídas: R$ ${outT.toFixed(2)}`, 15, 72);
-            const tableData = db.trans.map(t => [t.data, t.desc, t.cat, `R$ ${t.valor.toFixed(2)}`]);
-            doc.autoTable({ startY: 85, head: [['Data', 'Descrição', 'Cat', 'Valor']], body: tableData });
-            doc.save(`Alforria_Relatorio_${date}.pdf`);
-        }
-
-        function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
-
+        // RENDER
         function render() {
-            let saldo = 0, inT = 0, outT = 0;
-            db.trans.forEach(t => { saldo += t.valor; if(t.valor > 0) inT += t.valor; else outT += Math.abs(t.valor); });
+            lucide.createIcons();
+            document.getElementById('txtSaldo').innerText = `R$ ${db.saldo.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            document.getElementById('txtEconomia').innerText = `R$ ${db.economia.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
             
-            document.getElementById('saldo-geral').innerText = `R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
-            document.getElementById('total-entradas').innerText = `R$ ${inT.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
-            document.getElementById('total-saidas').innerText = `R$ ${outT.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            // Diário
+            const perc = (db.gastoDia / db.limite) * 100;
+            document.getElementById('barLimite').style.width = Math.min(perc, 100) + '%';
+            document.getElementById('txtGastoInfo').innerText = `Gasto: R$ ${db.gastoDia.toFixed(2)}`;
+            document.getElementById('txtLimiteInfo').innerText = `Limite: R$ ${db.limite.toFixed(2)}`;
 
-            const badge = document.getElementById('badge-status'), line = document.getElementById('balance-line');
-            if(saldo >= 0) {
-                badge.innerText = "OK"; badge.className = "absolute top-4 right-4 px-3 py-0.5 rounded-full text-[8px] font-black bg-emerald-500 text-black";
-                line.className = "absolute top-0 left-0 w-full h-1 bg-emerald-500";
-                document.getElementById('saldo-geral').style.color = "white";
-            } else {
-                badge.innerText = "NEGATIVO"; badge.className = "absolute top-4 right-4 px-3 py-0.5 rounded-full text-[8px] font-black bg-red-500 text-white animate-pulse";
-                line.className = "absolute top-0 left-0 w-full h-1 bg-red-500";
-                document.getElementById('saldo-geral').style.color = "#ef4444";
-            }
-
-            document.getElementById('lista-historico').innerHTML = db.trans.slice().reverse().map(t => `
-                <div class="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <div><p class="font-bold text-sm">${t.desc}</p><p class="text-[9px] text-gray-500 uppercase">${t.data} | ${t.cat}</p></div>
-                    <b class="${t.valor > 0 ? 'text-emerald-400' : 'text-red-400'}">R$ ${Math.abs(t.valor).toFixed(2)}</b>
-                </div>`).join('');
-
-            document.getElementById('lista-metas').innerHTML = db.metas.map((m, i) => {
-                const perc = Math.min((m.atual/m.total)*100, 100);
-                const isConcluida = perc >= 100;
-                return `
-                <div class="glass-card p-5 border-b-4 ${isConcluida ? 'concluida-anim border-emerald-500' : 'border-sky-500'}">
-                    <div class="flex justify-between mb-2"><b class="text-sm">${m.nome}</b><span class="font-bold text-xs">${perc.toFixed(0)}%</span></div>
-                    <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden mb-4"><div class="${isConcluida ? 'bg-emerald-500' : 'bg-sky-500'} h-full" style="width:${perc}%"></div></div>
-                    ${isConcluida ? `<button onclick="finalizarMeta(${i})" class="w-full bg-emerald-500 text-black p-2 rounded-xl text-[10px] font-black uppercase">🏆 Concluir</button>` : `<button onclick="aportarMeta(${i})" class="w-full bg-sky-500/10 text-sky-400 p-2 rounded-xl text-[10px] font-black uppercase">Aportar</button>`}
+            // Fixas
+            let sumFixa = 0;
+            document.getElementById('listaFixas').innerHTML = db.fixas.map(f => {
+                sumFixa += f.valor;
+                return `<div class="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div><p class="text-sm font-bold text-white">${f.nome}</p><p class="text-[10px] text-slate-500 uppercase">Mensal: R$ ${f.valor.toFixed(2)}</p></div>
+                    <button onclick="delFixa(${f.id})" class="text-rose-500 p-2"><i data-lucide="trash-2" size="16"></i></button>
                 </div>`;
             }).join('');
+            document.getElementById('txtProjecao').innerText = `R$ ${(db.saldo - sumFixa).toLocaleString('pt-BR')}`;
+
+            // Investimentos & Metas (Alto Contraste)
+            document.getElementById('listaInvest').innerHTML = db.invest.map(i => `
+                <div class="flex justify-between items-center bg-slate-900/50 p-3 rounded-xl border border-emerald-500/10">
+                    <span class="text-white text-sm font-bold">${i.nome}</span>
+                    <span class="text-white text-sm font-black">R$ ${i.valor.toFixed(2)}</span>
+                </div>
+            `).join('');
+
+            document.getElementById('listaMetas').innerHTML = db.metas.map(m => `
+                <div class="space-y-1">
+                    <div class="flex justify-between text-[10px] font-bold text-white"><span>${m.nome}</span><span>${((m.atual/m.total)*100).toFixed(0)}%</span></div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden"><div class="bg-cyan-500 h-full" style="width: ${(m.atual/m.total)*100}%"></div></div>
+                    <button onclick="aportarMeta(${m.id})" class="text-[9px] text-cyan-400 font-black mt-1">APORTAR DINHEIRO</button>
+                </div>
+            `).join('');
         }
 
-        function renderCharts() {
-            const ctxP = document.getElementById('chartPizza').getContext('2d');
-            const cats = {};
-            db.trans.filter(t => t.valor < 0).forEach(t => cats[t.cat] = (cats[t.cat] || 0) + Math.abs(t.valor));
-            if(charts.p) charts.p.destroy();
-            charts.p = new Chart(ctxP, { type: 'doughnut', data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#38bdf8', '#fbbf24', '#f87171', '#34d399', '#a78bfa', '#818cf8'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } } });
-        }
+        // Auto Reset Diário
+        (function() {
+            const h = new Date().toLocaleDateString();
+            if(db.ultimaData !== h) { db.gastoDia = 0; db.ultimaData = h; save(); }
+        })();
 
         window.onload = render;
     </script>
 </body>
-</html>
+    </html>
