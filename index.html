@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alforria dos crias | Full Edition</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: radial-gradient(circle at top right, #1e1b4b, #020617);
+            color: #f8fafc; 
+            min-height: 100vh;
+        }
+
+        .glass-card { 
+            background: rgba(15, 23, 42, 0.7); 
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+            border-radius: 28px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 20px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-item {
+            background: #0f172a;
+            padding: 12px 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-item.active { background: #38bdf8; color: #020617; }
+
+        .page-section { display: none; animation: fadeIn 0.4s ease-out; }
+        .page-section.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        #modal-overlay { display: none; background: rgba(0,0,0,0.9); backdrop-filter: blur(12px); z-index: 100; position: fixed; inset: 0; }
+        
+        input, select { 
+            background: rgba(30, 41, 59, 0.8) !important; 
+            border: 1px solid rgba(255,255,255,0.1) !important; 
+            color: white !important;
+            border-radius: 12px;
+        }
+
+        .concluida-anim { animation: pulse-green 2s infinite; border-color: #10b981 !important; }
+        @keyframes pulse-green { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 70% { box-shadow: 0 0 0 15px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+    </style>
+</head>
+<body class="pb-32 md:pb-12 p-4">
+
+    <div id="modal-overlay">
+        <div class="flex items-center justify-center min-h-full p-4">
+            <div class="glass-card p-8 w-full max-w-md text-center">
+                <div id="modal-icon" class="text-4xl mb-4"></div>
+                <h3 id="modal-title" class="text-xl font-bold mb-2 text-sky-400"></h3>
+                <div id="modal-body" class="text-white text-sm mb-6"></div>
+                <div id="modal-actions" class="flex flex-col gap-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <header class="max-w-5xl mx-auto mb-8">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-black text-white italic tracking-tighter">ALFORRIA <span class="text-sky-400">CRIAS</span></h1>
+            <button onclick="preparaReset()" class="bg-red-500/20 text-red-400 border border-red-500/50 px-3 py-1 rounded-lg text-[10px] font-bold uppercase">
+                <i class="fas fa-sync-alt mr-1"></i> Novo Mês
+            </button>
+        </div>
+        
+        <div class="glass-card p-6 text-center relative overflow-hidden">
+            <div id="badge-status" class="absolute top-4 right-4 px-3 py-0.5 rounded-full text-[8px] font-black uppercase"></div>
+            <div class="absolute top-0 left-0 w-full h-1" id="balance-line"></div>
+            <p class="text-xs text-gray-400 uppercase font-bold tracking-widest mb-1">Saldo Atual</p>
+            <h2 id="saldo-geral" class="text-5xl font-black tracking-tighter">R$ 0,00</h2>
+            <div class="grid grid-cols-2 gap-4 mt-6 border-t border-white/10 pt-4">
+                <div>
+                    <p class="text-[10px] text-emerald-400 font-bold uppercase">Ganhos</p>
+                    <p id="total-entradas" class="text-lg font-bold">R$ 0,00</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-red-400 font-bold uppercase">Gastos</p>
+                    <p id="total-saidas" class="text-lg font-bold">R$ 0,00</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <nav class="fixed bottom-6 left-4 right-4 z-50 md:relative md:bottom-0 md:mb-12 max-w-2xl mx-auto">
+        <div class="nav-grid">
+            <div onclick="switchTab('dash')" class="nav-item active" id="btn-dash">
+                <span class="text-xl">🏠</span>
+                <span class="text-[10px] font-bold mt-1 uppercase">Início</span>
+            </div>
+            <div onclick="switchTab('trans')" class="nav-item" id="btn-trans">
+                <span class="text-xl">💸</span>
+                <span class="text-[10px] font-bold mt-1 uppercase">Fluxo</span>
+            </div>
+            <div onclick="switchTab('metas')" class="nav-item" id="btn-metas">
+                <span class="text-xl">🎯</span>
+                <span class="text-[10px] font-bold mt-1 uppercase">Metas</span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto">
+        <section id="dash" class="page-section active space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-card p-6 h-72"><canvas id="chartPizza"></canvas></div>
+                <div class="glass-card p-6 h-72"><canvas id="chartLinha"></canvas></div>
+            </div>
+            <div class="glass-card p-6">
+                <h3 class="font-bold text-gray-400 text-xs uppercase mb-4 tracking-widest">Histórico Detalhado</h3>
+                <div id="lista-historico" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <section id="trans" class="page-section space-y-6">
+            <div class="glass-card p-6 border-l-8 border-emerald-500">
+                <h2 class="font-black text-emerald-400 mb-4 uppercase text-sm">💰 Entrada</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" id="in-desc" placeholder="Ex: Salário" class="p-4">
+                    <input type="number" id="in-valor" placeholder="R$">
+                    <select id="in-cat" class="p-4">
+                        <option value="Salário">💵 Salário</option>
+                        <option value="Extra">💎 Extra</option>
+                    </select>
+                </div>
+                <button onclick="adicionarGanho()" class="w-full mt-4 bg-emerald-500 text-black font-black p-4 rounded-2xl uppercase shadow-lg">Salvar Entrada</button>
+            </div>
+            <div class="glass-card p-6 border-l-8 border-red-500">
+                <h2 class="font-black text-red-400 mb-4 uppercase text-sm">📉 Saída</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" id="out-desc" placeholder="Ex: Mercado" class="p-4">
+                    <input type="number" id="out-valor" placeholder="R$">
+                    <select id="out-cat" class="p-4">
+                        <option value="Mercado">🛒 Mercado</option>
+                        <option value="Fixo">🏠 Fixo</option>
+                        <option value="Lazer">🎡 Lazer</option>
+                        <option value="Cartão">💳 Cartão</option>
+                        <option value="Roupa">👕 Roupa</option>
+                        <option value="Outros">⚙️ Outros</option>
+                    </select>
+                </div>
+                <button onclick="adicionarGasto()" class="w-full mt-4 bg-red-500 text-white font-black p-4 rounded-2xl uppercase shadow-lg">Salvar Saída</button>
+            </div>
+        </section>
+
+        <section id="metas" class="page-section space-y-6">
+            <div class="glass-card p-6">
+                <h2 class="font-black text-sky-400 mb-4 uppercase text-sm">🚀 Criar Meta</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input type="text" id="meta-nome" placeholder="Nome da Meta" class="p-4">
+                    <input type="number" id="meta-valor" placeholder="Total R$" class="p-4">
+                    <button onclick="addMeta()" class="bg-sky-500 text-black font-black p-4 rounded-2xl uppercase">Criar</button>
+                </div>
+            </div>
+            <div id="lista-metas" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+        </section>
+    </main>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('alforria_vFinal_Full')) || { trans: [], metas: [] };
+        let charts = {};
+
+        function save() {
+            localStorage.setItem('alforria_vFinal_Full', JSON.stringify(db));
+            render();
+        }
+
+        function switchTab(id) {
+            document.querySelectorAll('.page-section, .nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('btn-' + id).classList.add('active');
+            if(id === 'dash') renderCharts();
+        }
+
+        function adicionarGanho() {
+            const d = document.getElementById('in-desc'), v = document.getElementById('in-valor'), c = document.getElementById('in-cat');
+            if (d.value && v.value) {
+                db.trans.push({ desc: d.value, valor: parseFloat(v.value), cat: c.value, data: new Date().toLocaleDateString('pt-BR') });
+                d.value = ''; v.value = ''; save();
+            }
+        }
+
+        function adicionarGasto() {
+            const d = document.getElementById('out-desc'), v = document.getElementById('out-valor'), c = document.getElementById('out-cat');
+            if (d.value && v.value) {
+                db.trans.push({ desc: d.value, valor: -parseFloat(v.value), cat: c.value, data: new Date().toLocaleDateString('pt-BR') });
+                d.value = ''; v.value = ''; save();
+            }
+        }
+
+        function addMeta() {
+            const n = document.getElementById('meta-nome'), v = document.getElementById('meta-valor');
+            if(n.value && v.value) {
+                db.metas.push({ nome: n.value, total: parseFloat(v.value), atual: 0 });
+                n.value = ''; v.value = ''; save();
+            }
+        }
+
+        function aportarMeta(idx) {
+            document.getElementById('modal-title').innerText = `Aportar: ${db.metas[idx].nome}`;
+            document.getElementById('modal-icon').innerText = "💰";
+            document.getElementById('modal-body').innerHTML = `<input type="number" id="val-meta" placeholder="R$" class="w-full p-4 rounded-xl text-black border-none ring-2 ring-sky-500">`;
+            document.getElementById('modal-actions').innerHTML = `
+                <button onclick="confirmarAporte(${idx})" class="w-full p-4 bg-sky-500 text-black font-black rounded-2xl uppercase">Confirmar</button>
+                <button onclick="closeModal()" class="w-full p-4 bg-slate-800 text-white font-bold rounded-2xl uppercase">Voltar</button>
+            `;
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function confirmarAporte(idx) {
+            const v = parseFloat(document.getElementById('val-meta').value);
+            if(v) {
+                db.metas[idx].atual += v;
+                db.trans.push({ desc: `Aporte: ${db.metas[idx].nome}`, valor: -v, cat: 'Metas', data: new Date().toLocaleDateString('pt-BR') });
+                save(); closeModal();
+            }
+        }
+
+        function finalizarMeta(idx) {
+            document.getElementById('modal-title').innerText = "Meta Atingida! 🏆";
+            document.getElementById('modal-icon').innerText = "🥳";
+            document.getElementById('modal-body').innerText = `Você atingiu o valor total de ${db.metas[idx].nome}! Deseja marcar como concluída e remover da lista?`;
+            document.getElementById('modal-actions').innerHTML = `
+                <button onclick="db.metas.splice(${idx}, 1); save(); closeModal();" class="w-full p-4 bg-emerald-500 text-black font-black rounded-2xl uppercase">Concluir e Excluir</button>
+                <button onclick="closeModal()" class="w-full p-4 bg-slate-800 text-white font-bold rounded-2xl uppercase">Manter</button>
+            `;
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function preparaReset() {
+            document.getElementById('modal-title').innerText = "Novo Mês";
+            document.getElementById('modal-icon').innerText = "🗓️";
+            document.getElementById('modal-body').innerText = "Escolha como deseja resetar o seu fluxo mensal. Suas Metas atuais não serão afetadas.";
+            document.getElementById('modal-actions').innerHTML = `
+                <button onclick="gerarPDFComReset()" class="w-full p-4 bg-emerald-500 text-black font-black rounded-2xl text-xs uppercase">1. Baixar PDF e Resetar</button>
+                <button onclick="resetarDireto()" class="w-full p-4 bg-red-500 text-white font-black rounded-2xl text-xs uppercase">2. Não gerar PDF e Resetar</button>
+                <button onclick="closeModal()" class="w-full p-4 bg-slate-800 text-white font-bold rounded-2xl text-xs uppercase">Voltar</button>
+            `;
+            document.getElementById('modal-overlay').style.display = 'block';
+        }
+
+        function resetarDireto() {
+            if(confirm("Tem certeza que deseja zerar o fluxo do mês sem gerar o relatório?")) {
+                db.trans = []; save(); closeModal();
+            }
+        }
+
+        function gerarPDFComReset() {
+            gerarPDF();
+            setTimeout(() => {
+                if(confirm("PDF gerado! Deseja zerar o fluxo mensal agora?")) {
+                    db.trans = []; save(); closeModal();
+                }
+            }, 1000);
+        }
+
+        function gerarPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const date = new Date().toLocaleDateString('pt-BR');
+            doc.setFillColor(15, 23, 42); doc.rect(0, 0, 210, 40, 'F');
+            doc.setTextColor(255, 255, 255); doc.setFontSize(22); doc.text("ALFORRIA CRIAS - RELATÓRIO", 15, 25);
+            doc.setTextColor(0,0,0); doc.setFontSize(14); doc.text("RESUMO DO MÊS", 15, 55);
+            const inT = db.trans.filter(t => t.valor > 0).reduce((a,b) => a+b.valor, 0);
+            const outT = db.trans.filter(t => t.valor < 0).reduce((a,b) => a+Math.abs(b.valor), 0);
+            doc.setFontSize(11); doc.text(`Total Entradas: R$ ${inT.toFixed(2)}`, 15, 65); doc.text(`Total Saídas: R$ ${outT.toFixed(2)}`, 15, 72);
+            const tableData = db.trans.map(t => [t.data, t.desc, t.cat, `R$ ${t.valor.toFixed(2)}`]);
+            doc.autoTable({ startY: 85, head: [['Data', 'Descrição', 'Cat', 'Valor']], body: tableData });
+            doc.save(`Alforria_Relatorio_${date}.pdf`);
+        }
+
+        function closeModal() { document.getElementById('modal-overlay').style.display = 'none'; }
+
+        function render() {
+            let saldo = 0, inT = 0, outT = 0;
+            db.trans.forEach(t => { saldo += t.valor; if(t.valor > 0) inT += t.valor; else outT += Math.abs(t.valor); });
+            
+            document.getElementById('saldo-geral').innerText = `R$ ${saldo.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            document.getElementById('total-entradas').innerText = `R$ ${inT.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+            document.getElementById('total-saidas').innerText = `R$ ${outT.toLocaleString('pt-BR', {minimumFractionDigits:2})}`;
+
+            const badge = document.getElementById('badge-status'), line = document.getElementById('balance-line');
+            if(saldo >= 0) {
+                badge.innerText = "OK"; badge.className = "absolute top-4 right-4 px-3 py-0.5 rounded-full text-[8px] font-black bg-emerald-500 text-black";
+                line.className = "absolute top-0 left-0 w-full h-1 bg-emerald-500";
+                document.getElementById('saldo-geral').style.color = "white";
+            } else {
+                badge.innerText = "NEGATIVO"; badge.className = "absolute top-4 right-4 px-3 py-0.5 rounded-full text-[8px] font-black bg-red-500 text-white animate-pulse";
+                line.className = "absolute top-0 left-0 w-full h-1 bg-red-500";
+                document.getElementById('saldo-geral').style.color = "#ef4444";
+            }
+
+            document.getElementById('lista-historico').innerHTML = db.trans.slice().reverse().map(t => `
+                <div class="flex justify-between items-center p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div><p class="font-bold text-sm">${t.desc}</p><p class="text-[9px] text-gray-500 uppercase">${t.data} | ${t.cat}</p></div>
+                    <b class="${t.valor > 0 ? 'text-emerald-400' : 'text-red-400'}">R$ ${Math.abs(t.valor).toFixed(2)}</b>
+                </div>`).join('');
+
+            document.getElementById('lista-metas').innerHTML = db.metas.map((m, i) => {
+                const perc = Math.min((m.atual/m.total)*100, 100);
+                const isConcluida = perc >= 100;
+                return `
+                <div class="glass-card p-5 border-b-4 ${isConcluida ? 'concluida-anim border-emerald-500' : 'border-sky-500'}">
+                    <div class="flex justify-between mb-2"><b class="text-sm">${m.nome}</b><span class="font-bold text-xs">${perc.toFixed(0)}%</span></div>
+                    <div class="w-full bg-white/10 h-2 rounded-full overflow-hidden mb-4"><div class="${isConcluida ? 'bg-emerald-500' : 'bg-sky-500'} h-full" style="width:${perc}%"></div></div>
+                    ${isConcluida ? `<button onclick="finalizarMeta(${i})" class="w-full bg-emerald-500 text-black p-2 rounded-xl text-[10px] font-black uppercase">🏆 Concluir</button>` : `<button onclick="aportarMeta(${i})" class="w-full bg-sky-500/10 text-sky-400 p-2 rounded-xl text-[10px] font-black uppercase">Aportar</button>`}
+                </div>`;
+            }).join('');
+        }
+
+        function renderCharts() {
+            const ctxP = document.getElementById('chartPizza').getContext('2d');
+            const cats = {};
+            db.trans.filter(t => t.valor < 0).forEach(t => cats[t.cat] = (cats[t.cat] || 0) + Math.abs(t.valor));
+            if(charts.p) charts.p.destroy();
+            charts.p = new Chart(ctxP, { type: 'doughnut', data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#38bdf8', '#fbbf24', '#f87171', '#34d399', '#a78bfa', '#818cf8'], borderWidth: 0 }] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 10 } } } } } });
+        }
+
+        window.onload = render;
+    </script>
+</body>
+</html>
